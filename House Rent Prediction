@@ -1,0 +1,165 @@
+import numpy as np
+import pandas as pd
+df=pd.read_csv('/content/drive/MyDrive/Datasets/House_Rent_Dataset.csv')
+df.head()
+df['Posted On'].replace(r'(\d{4})-\d{2}-\d{2}',r'\1',regex=True,inplace=True)
+df.drop(columns='Posted On',inplace=True)
+df.isna().sum()
+df.describe()
+for column in df.columns:
+  if df[column].dtype=='object':
+   print(column,'|',df[column].value_counts())
+floor_counts=df['Floor'].value_counts()
+unique_floor=floor_counts.index
+floor_counts.values
+unique_floor_count=floor_counts.values
+unique_floor_count=[i for i in unique_floor_count if i>100]
+unique_floor_count
+len(unique_floor_count)
+unique_floor[:13]
+selected_model=unique_floor[:13]
+df['selected_model']=df['Floor'].apply(func=lambda x:x in selected_model)
+df=df[df['selected_model']==True]
+df.drop(columns='selected_model',inplace=True)
+df.reset_index(drop=True,inplace=True)
+len(df['Area Locality'].value_counts())
+df.drop(columns='Area Locality',inplace=True)
+df=df[df['Point of Contact']!='Contact Builder']
+df=df[df['Area Type']!='Built Area']
+for column in df.columns:
+  if df[column].dtype=='object':
+    print(column,'|',df[column].value_counts())
+import matplotlib.pyplot as plt
+plt.boxplot(df['Rent'])
+plt.show()
+df=df[df['Rent']<=100000]
+plt.boxplot(df['Rent'])
+plt.show()
+df=df[df['Rent']<=25000]
+plt.boxplot(df['Rent'])
+plt.show()
+from sklearn.preprocessing import LabelEncoder
+lst=[]
+label={}
+for column in df.columns:
+  if df[column].dtype=='object' and len(df[column].unique())==2:
+    label[column]=LabelEncoder()
+    df[column]=label[column].fit_transform(df[column])
+  elif df[column].dtype=='object':
+    lst.append(column)
+lst
+from sklearn.preprocessing import OneHotEncoder
+onehot=OneHotEncoder(sparse_output=False,drop='first')
+onehot_result=onehot.fit_transform(df[lst])
+result=pd.DataFrame(onehot_result,columns=[str(i) for i in range(1,22)])
+# result=pd.DataFrame(onehot_result,columns=onehot.get_feature_names_out(['Floor', 'City', 'Furnishing Status', 'Tenant Preferred']))
+result
+df.drop(columns=['Floor', 'City', 'Furnishing Status', 'Tenant Preferred'],inplace=True)
+df_new=df.join(result)
+import seaborn as sns
+sns.boxplot(data=df_new)
+plt.scatter(x=df_new['Rent'],y=df['Size'])
+plt.title('Rent & Size')
+plt.xlabel('Rent')
+plt.ylabel('Size')
+plt.show()
+plt.boxplot(df_new['Size'])
+plt.show()
+len(df_new[df_new['Size']>=100])
+len(df_new)
+df_new.describe()
+sns.heatmap(df_new.corr())
+plt.bar(df_new['Rent'],df_new['BHK'],width=100)
+plt.xlabel('Rent')
+plt.ylabel('BHK')
+plt.title('Rent on the basis of BHK')
+df_new.isna().sum()
+df_new.dropna(inplace=True)
+x=df_new.drop(columns='Rent')
+y=df_new['Rent']
+from sklearn.model_selection import train_test_split
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.3,random_state=10)
+ from sklearn.preprocessing import StandardScaler
+ss=StandardScaler()
+x_train_scaled=ss.fit_transform(x_train)
+x_test_scaled=ss.transform(x_test)
+from sklearn.neighbors import KNeighborsRegressor
+knn=KNeighborsRegressor(n_neighbors=30,weights='distance')
+knn.fit(x_train_scaled,y_train)
+knn_y_pred=knn.predict(x_test_scaled)
+from sklearn.metrics import mean_absolute_error,mean_squared_error,r2_score
+print(mean_absolute_error(y_test,knn_y_pred))
+print(np.sqrt(mean_squared_error(y_test,knn_y_pred)))
+print(r2_score(y_test,knn_y_pred))
+from sklearn.linear_model import LinearRegression
+lr=LinearRegression()
+from sklearn.linear_model import Lasso
+ls=Lasso(alpha=0.001)
+from sklearn.linear_model import Ridge
+rg=Ridge(alpha=0.001)
+from sklearn.tree import DecisionTreeRegressor
+dt=DecisionTreeRegressor(criterion='squared_error',splitter='random',max_depth=20,min_samples_split=10)
+from sklearn.ensemble import RandomForestRegressor
+rf=RandomForestRegressor(n_estimators=50,criterion='squared_error',min_samples_split=5,max_depth=20)
+from sklearn.ensemble import GradientBoostingRegressor
+gbr=GradientBoostingRegressor(n_estimators=50,criterion='squared_error',min_samples_split=5,max_depth=20)
+from sklearn.ensemble import HistGradientBoostingRegressor
+hgbr=HistGradientBoostingRegressor(learning_rate=0.1,max_depth=20)
+from xgboost import XGBRegressor
+xgb=XGBRegressor(learning_rate=0.01,n_estimators=300,max_depth=10,min_sample_split=50)
+from sklearn.ensemble import AdaBoostRegressor
+abr=AdaBoostRegressor(n_estimators=100,learning_rate=0.01)
+from sklearn.preprocessing import PolynomialFeatures
+
+def poly_feature(x_train,x_test,y_train,y_test):
+  pf=PolynomialFeatures(degree=3)
+  x_train_poly=pf.fit_transform(x_train)
+  x_test_poly=pf.transform(x_test)
+  lr.fit(x_train_poly,y_train)
+  y_pred_poly=lr.predict(x_test_poly)
+  mae=mean_absolute_error(y_test,y_pred_poly)
+  mse=np.sqrt(mean_squared_error(y_test,y_pred_poly))
+  r2=r2_score(y_test,y_pred_poly)
+  print('Mean_absolute_error',mae)
+  print('Mean_suqared_error',mse)
+  print('R2_score',r2)
+  return
+models=[knn,lr,ls,rg,dt,rf,gbr,hgbr,xgb,abr]
+for model in models:
+  if model==knn:
+    model.fit(x_train_scaled,y_train)
+    y_pred=model.predict(x_test_scaled)
+  else:
+     model.fit(x_train,y_train)
+     y_pred=model.predict(x_test)
+  print(f'Model - {model}')
+  print('mean_absolute_error - ',mean_absolute_error(y_test,y_pred))
+  print('mean_squared_error - ',np.sqrt(mean_squared_error(y_test,y_pred)))
+  print('r2_score - ',r2_score(y_test,y_pred))
+  print('--------------------------------------------------------')
+print(f"Model - {pf}")
+poly_feature(x_train,x_test,y_train,y_test)
+from sklearn.model_selection import RandomizedSearchCV
+rs=RandomizedSearchCV(Ridge(),{'alpha':[0.001,0.01,0.1,1,10,100]})
+rs.fit(x,y)
+rs.best_params_
+rs.best_score_
+def prediction(BHK, Size,Area_Type,Bathroom, Point_of_Contact,Floor,City, Furnishing_Status, Tenant_Preferred):
+  BHK_encoded=np.array(BHK).reshape(1,-1)
+  Size_encoded=np.array(Size).reshape(1,-1)
+  Area_type_encoded=np.array(label['Area Type'].transform([Area_Type])[0]).reshape(1,-1)
+  Bathroom_encoded=np.array(Bathroom).reshape(1,-1)
+  Point_of_contact_encoded=np.array(label['Point of Contact'].transform([Point_of_Contact])[0]).reshape(1,-1)
+  Floor_City_Furnishing_Status_Tenant_Preferred_encoded=onehot.transform([[Floor,City,Furnishing_Status,Tenant_Preferred]])
+  input_values=np.hstack((BHK_encoded,Size_encoded,Area_type_encoded,Bathroom_encoded,Point_of_contact_encoded,Floor_City_Furnishing_Status_Tenant_Preferred_encoded))
+  test_df=pd.DataFrame(input_values,columns=x.columns)
+  pred=rg.predict(test_df)
+  return pred
+prediction(2,1100,'Carpet Area',2,'Contact Owner','Ground out of 2','Chennai','Unfurnished','Bachelors')
+
+
+
+
+
+
+
