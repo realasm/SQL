@@ -1,0 +1,166 @@
+import numpy as np
+import pandas as pd
+df=pd.read_csv('/content/drive/MyDrive/Datasets/fake_job_postings.csv')
+df.head()
+
+df.tail()
+
+df.shape
+
+df.describe()
+
+df.info()
+
+def category_nuemeric(data_frame):
+  category=[]
+  neumeric=[]
+  for column in data_frame.columns:
+    if data_frame[column].dtype=='object':
+      category.append(column)
+    else:
+      neumeric.append(column)
+  return category,neumeric
+
+category,neumeric = category_nuemeric(df)
+
+df.isnull().sum()
+
+df.drop(columns=['job_id','location','department','salary_range','benefits','telecommuting','has_company_logo','has_questions','required_experience','required_education','employment_type','industry','function'],axis=1,inplace=True)
+
+df.head()
+
+df.isnull().sum()
+
+def fillin_columns(data_frame):
+  for col in data_frame.columns:
+    if data_frame[col].isnull().sum()>=0:
+      data_frame[col].fillna(data_frame[col].mode().iloc[0],inplace=True)
+  return data_frame
+
+new_df.head()
+
+new_df=fillin_columns(df)
+
+new_df.head()
+
+new_df.isnull().sum()
+
+!python -m spacy download en_core_web_lg
+
+import spacy
+nlp=spacy.load('en_core_web_lg')
+def text_converter(text):
+  doc=nlp(text)
+  lst=[i.lemma_.lower() for i in doc if  not i.is_punct and not i.is_stop]
+  return ' '.join(lst)
+
+def spcy(data_frame):
+  dummy_df=data_frame.copy()
+  for col in dummy_df.columns:
+    if dummy_df[col].dtype == 'object':
+      dummy_df[col]=dummy_df[col].apply(func=text_converter)
+  return dummy_df
+
+df_final=spcy(new_df)
+
+df_final=pd.DataFrame(df_final)
+
+df_final.to_csv('/content/drive/MyDrive/Datasets/Final',index=False)
+
+df_final.head()
+
+# df_main=pd.read_csv('/content/drive/MyDrive/Datasets/Final')
+# df_main.head()
+
+# * Models that are using in this dataset
+# -------------------------------------------------------
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from xgboost import XGBClassifier
+from sklearn.ensemble  import AdaBoostClassifier
+knn=KNeighborsClassifier(n_neighbors=20,weights='distance')
+svc=SVC()
+mlt=MultinomialNB()
+dct=DecisionTreeClassifier(criterion='entropy',max_depth=10)
+rfc=RandomForestClassifier(n_estimators=50,criterion='entropy')
+gbc=GradientBoostingClassifier(learning_rate=0.01,n_estimators=500,max_depth=10,min_samples_split=50)
+xgb=XGBClassifier(learning_rate=0.01,n_estimators=500,max_depth=10,min_samples_split=50)
+abc=AdaBoostClassifier(n_estimators=100,learning_rate=0.01)
+
+# *To balance the imbalanced data
+# --------------------------------------------------------
+from imblearn.over_sampling import RandomOverSampler
+over=RandomOverSampler()
+
+# * For spliting the dataset
+# -------------------------------------------------------
+from sklearn.model_selection import train_test_split
+
+# *For computing the accuracy and  building a text report
+# ------------------------------------------------------
+from sklearn.metrics import classification_report,accuracy_score,f1_score
+
+# * Cross-validation
+# ------------------------------------------------------
+from sklearn.model_selection import RandomizedSearchCV
+
+# For converting Strings into vector 
+from sklearn.feature_extraction.text import TfidfVectorizer,CountVectorizer
+vectorizer=TfidfVectorizer()
+vectorizer1=CountVectorizer()
+
+x=df_final.drop(columns='fraudulent')
+y=df_final['fraudulent']
+
+df_final['fraudulent'].value_counts()
+
+x_over,y_over=over.fit_resample(x,y)
+x_train,x_test,y_train,y_test=train_test_split(x_over,y_over,test_size=0.3,random_state=0)
+
+x_train_combined = x_train.astype(str).apply(lambda row: ' '.join(row), axis=1)
+x_test_combined = x_test.astype(str).apply(lambda row: ' '.join(row), axis=1)
+
+
+x_train_vector=vectorizer1.fit_transform(x_train_combined)
+x_test_vector=vectorizer1.transform(x_test_combined)
+
+x_train.shape
+
+x_train_vector.shape
+
+y_train.shape
+
+models=[knn,svc,mlt,dct,rfc,gbc,xgb,abc]
+for model in models:
+  model.fit(x_train_vector,y_train)
+  y_pred=model.predict(x_test_vector)
+  print(f'Model - {model}')
+  print('classification_report - ',classification_report(y_test,y_pred))
+  print('accuracy_score - ',np.sqrt(accuracy_score(y_test,y_pred)))
+  print('f1_score - ',f1_score(y_test,y_pred))
+  print('--------------------------------------------------------')
+
+
+df_final.columns
+
+def prediction(title, company_profile, description, requirements):
+  def pipeline(text):
+    cleaned_text=text_converter(str(text))
+    return cleaned_text
+  title_cleaned=pipeline(title)
+  company_profile_cleaned=pipeline(company_profile)
+  description_cleaned=pipeline(description)
+  requirements_cleaned=pipeline(requirements)
+  pred_df=pd.DataFrame({'title':[title_cleaned],'company_profile':[company_profile_cleaned],'description':[description_cleaned],'requirements':[requirements_cleaned]})
+  joined_value=pred_df.astype(str).apply(lambda row: ' '.join(row), axis=1)
+  final_vector=vectorizer1.transform(joined_value)
+  pred=mlt.predict(final_vector)
+  # real_val=mlt.inverse_transform([pred])
+  if pred == ([0]):
+    return print('Fake')
+  else:
+    return print('Real')
